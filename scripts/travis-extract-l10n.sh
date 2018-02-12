@@ -29,6 +29,10 @@ MERGE_FLAGS="--update --width=200 --backup=none"
 UNIQ_FLAGS="--width=200"
 DEBUG_LOCALES="dbl dbr"
 
+CURRENT_COMMIT_SHA="bc9d9c01ac330fc50e45cb948f2847fb8f3664df"
+CURRENT_PR_URL="https://api.github.com/repos/mozilla/addons-server/pulls/7542"
+
+
 function init_environment {
     git checkout master
     git checkout -b "$BRANCH_NAME"
@@ -105,11 +109,67 @@ EOF
 }
 
 
-function create_auto_pull_request {
+function create_and_auto_merge_pull_request {
     CREATE_PULL_REQUEST_URL="https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls"
     echo "Creating the auto merge pull request for $BRANCH_NAME ..."
-    curl --verbose -H "Authorization: token $GITHUB_TOKEN" --data "$(generate_post_data)" $CREATE_PULL_REQUEST_URL
+    response=$(curl -H "Authorization: token $GITHUB_TOKEN" \
+        --data "$(generate_post_data)" $CREATE_PULL_REQUEST_URL)
+
+    CURRENT_COMMIT_SHA=$(echo $response | jq 'head.sha')
+    CURRENT_PR_URL=$(echo $response | jq '.url')
+
+    echo "merge pull request is created ..."
+
+    echo "Sleeping for a minute to give tests some time to set correct status..."
+    sleep 60
+
+    retry 30 60 check_pull_request_status_and_merge
+}
+
+
+# Retries a command on failure.
+# $1 - the max number of attempts
+# $2 - the default time to sleep
+# $3... - the command to run
+# from http://fahdshariff.blogspot.com/2014/02/retrying-commands-in-shell-scripts.html
+# example usage:
+#retry 5 ls -ltr foo
+function retry() {
+    local -r -i max_attempts="$1"; shift
+    local -r -i waiting_time="$1"; shift
+    local -r cmd="$@"
+    local -i attempt_num=1
+
+    until $cmd
+    do
+        if [[ attempt_num == max_attempts ]]
+        then
+            echo "Attempt $attempt_num failed and there are no more attempts left!"
+            return 1
+        else
+            local sleep_time=$(( waiting_time + attempt_num ))
+            echo "Attempt $attempt_num failed! Trying again in $sleep_time seconds..."
+            sleep $sleep_time
+        fi
+    done
+}
+
+
+function check_pull_request_status_and_merge() {
+    CHECK_PULL_REQUEST_URL="https://api.github.com/repos/$TRAVIS_REPO_SLUG/commits/$CURRENT_COMMIT_SHA/status"
+    echo "Checking pull request status..."
+    response=$(curl $CHECK_PULL_REQUEST_URL)
     echo "auto merge pull request is created ..."
+
+    if [[ $(echo $response | jq '.state') == "success" ]]; then
+        MERGE_PULL_REQUEST_URL="https://api.github.com/repos/$TRAVIS_REPO_SLUG/pulls/"
+        echo "Merge pull request..."
+
+        curl -H "Authorization: token $GITHUB_TOKEN" --request PUT --data "{}" MERGE_PULL_REQUEST_URL
+        return 0
+    else
+        return 1
+    fi
 }
 
 if [ "$TRAVIS_BRANCH" != "master" ]; then
@@ -123,10 +183,12 @@ then
     exit 0
 fi
 
-init_environment
+# init_environment
 
-extract_locales
+# extract_locales
 
-commit_and_push
+# commit_and_push
 
-create_auto_pull_request
+# create_and_auto_merge_pull_request
+
+retry 30 60 check_pull_request_status_and_merge
