@@ -119,15 +119,15 @@ cleanup_python_build_dir:
 install_python_test_dependencies:
 	# Can't use --progress-bar=off for system packages as long as our docker image
 	# doesn't have pip 10 by default.
-	$(PIP_COMMAND) install --no-deps --exists-action=w -r requirements/system.txt
-	$(PIP_COMMAND) install --progress-bar=off --no-deps --exists-action=w -r requirements/prod_py${PYTHON_VERSION_MAJOR}${DJANGO_VERSION}.txt
-	$(PIP_COMMAND) install --progress-bar=off --no-deps --exists-action=w -r requirements/tests.txt
+	$(PIP_COMMAND) install --no-deps --no-cache --exists-action=w -r requirements/system.txt
+	$(PIP_COMMAND) install --progress-bar=off --no-deps --no-cache --exists-action=w -r requirements/prod_py${PYTHON_VERSION_MAJOR}${DJANGO_VERSION}.txt
+	$(PIP_COMMAND) install --progress-bar=off --no-deps --no-cache --exists-action=w -r requirements/tests.txt
 
 .PHONY: install_python_dev_dependencies
 install_python_dev_dependencies: install_python_test_dependencies setup-codestyle
-	$(PIP_COMMAND) install --progress-bar=off --no-deps --exists-action=w -r requirements/dev.txt
-	$(PIP_COMMAND) install --progress-bar=off --no-deps --exists-action=w -r requirements/dev_without_hash.txt
-	$(PIP_COMMAND) install --progress-bar=off --no-deps --exists-action=w -r requirements/docs.txt
+	$(PIP_COMMAND) install --progress-bar=off --no-deps --no-cache --exists-action=w -r requirements/dev.txt
+	$(PIP_COMMAND) install --progress-bar=off --no-deps --no-cache --exists-action=w -r requirements/dev_without_hash.txt
+	$(PIP_COMMAND) install --progress-bar=off --no-deps --no-cache --exists-action=w -r requirements/docs.txt
 	$(PIP_COMMAND) install -e .
 
 .PHONY: install_node_dependencies
@@ -201,12 +201,12 @@ run-ui-tests:
 
 .PHONY: perf-tests
 perf-tests: setup-ui-tests
-	$(PIP_COMMAND) install --progress-bar=off --no-deps -r requirements/perftests.txt
+	$(PIP_COMMAND) install --progress-bar=off --no-deps --no-cache -r requirements/perftests.txt
 	locust --no-web -c 1 -f tests/performance/locustfile.py --host "http://olympia.test"
 
 .PHONY: setup-codestyle
 setup-codestyle:
-	$(PIP_COMMAND) install --progress-bar=off --no-deps --exists-action=w -r requirements/codestyle_py${PYTHON_VERSION_MAJOR}.txt
+	$(PIP_COMMAND) install --progress-bar=off --no-deps --no-cache --exists-action=w -r requirements/codestyle_py${PYTHON_VERSION_MAJOR}.txt
 
 .PHONY: lint-codestyle
 lint-codestyle:
