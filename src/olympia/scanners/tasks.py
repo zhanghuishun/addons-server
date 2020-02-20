@@ -296,6 +296,8 @@ def run_yara_query_rule(query_rule_pk):
 
     # Group ID: group_result.id
     # How to reconstruct the `GroupResult` when producing the progress-stats:
+    # NOTE: It's *super* important to use the correctly configured celery app
+    # instance from amo.celery:app
     # from olympia.amo.celery import app as celery_app
     # result = celery_app.GroupResult.restore(saved_group_id)
     # result.completed_count() # will print the proper count
