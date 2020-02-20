@@ -281,6 +281,25 @@ def run_yara_query_rule(query_rule_pk):
     chunked_tasks = create_chunked_tasks_signatures(
         run_yara_query_rule_on_versions_chunk, list(qs), chunk_size,
         task_args=(query_rule_pk,))
+
+    # Force the group to be assigned a group_id ahead of creating the chord
+    # in the next step. This will allow us to track the group separately
+    # and implement proper progress-stats.
+    # This isn't 100% understood but for various reasons (e.g ignoring results
+    # by default) the group isn't stored for long in our redis result backend
+    # so that we can't query the status.
+    # Running .save() will save it into the result backend and keep it there.
+    # TODO: We'll need to figure out if at some point that data will vanish
+    # and if that's okay for us.
+    group_result = chunked_tasks.freeze()
+    group_result.save()
+
+    # Group ID: group_result.id
+    # How to reconstruct the `GroupResult` when producing the progress-stats:
+    # from olympia.amo.celery import app as celery_app
+    # result = celery_app.GroupResult.restore(saved_group_id)
+    # result.completed_count() # will print the proper count
+
     workflow = (
         chunked_tasks |
         mark_yara_query_rule_as_completed_or_aborted.si(query_rule_pk)
