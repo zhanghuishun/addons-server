@@ -12,6 +12,7 @@ from django.test.testcases import TransactionTestCase
 from celery import group, task
 from celery.canvas import _chain
 
+from olympia.addons.models import Addon
 from olympia.amo.tests import addon_factory, ESTestCase, reverse_ns
 from olympia.amo.utils import urlparams
 from olympia.lib.es.management.commands import reindex
@@ -59,6 +60,15 @@ class TestIndexCommand(ESTestCase):
                 self.es.indices.delete(index, ignore=404)
         super(TestIndexCommand, self).tearDown()
 
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        try:
+            assert not Addon.objects.exists(), Addon.objects.values('id', 'slug')
+        except AssertionError as ae:
+            Addon.objects.all().delete()
+            raise ae
+        
     def check_settings(self, new_indices):
         """Make sure the indices settings are properly set."""
 
