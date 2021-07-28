@@ -57,7 +57,6 @@ from olympia.files.utils import parse_addon
 from olympia.reviewers.forms import PublicWhiteboardForm
 from olympia.reviewers.models import Whiteboard
 from olympia.reviewers.templatetags.code_manager import code_manager_url
-from olympia.reviewers.templatetags.jinja_helpers import get_position
 from olympia.reviewers.utils import ReviewHelper
 from olympia.users.models import DeveloperAgreementRestriction
 from olympia.versions.models import Version
@@ -127,7 +126,7 @@ def index(request):
         ctx['recent_addons'] = []
         for addon in recent_addons:
             ctx['recent_addons'].append(
-                {'addon': addon, 'position': get_position(addon)}
+                {'addon': addon}
             )
 
     return render(request, 'devhub/index.html', ctx)
